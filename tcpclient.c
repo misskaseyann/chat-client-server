@@ -10,9 +10,11 @@
 
 int check_port(char*);
 
+/* Client half of client/server chat. */
 int main(int argc, char** argv) {
 	char addr[1024], port[1024];
 	unsigned long ip = 0;
+	int p;
 
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -21,6 +23,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	// Check to make sure the address is valid, exit otherwise.
 	printf("Please give an address: \n");
 	fgets(addr, 1024, stdin);
 	addr[strcspn(addr, "\n")] = 0;
@@ -29,6 +32,7 @@ int main(int argc, char** argv) {
         exit(0);
     }
 
+    // Check for valid port.
 	printf("Please give a port number: \n");
 	fgets(port, 1024, stdin);
 	port[strcspn(port, "\n")] = 0;
@@ -37,7 +41,8 @@ int main(int argc, char** argv) {
 		fgets(port, 1024, stdin);
 		port[strcspn(port, "\n")] = 0;
 	}
-	int p = atoi(port);
+
+	p = atoi(port);
 
 	struct sockaddr_in serveraddr;
 	serveraddr.sin_family=AF_INET;
@@ -52,8 +57,8 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Client started \n");
-	fflush(stdout);
 
+	// Set file descriptors.
 	fd_set clientfd;
 	FD_ZERO(&clientfd);
 	FD_SET(sockfd, &clientfd);
@@ -64,18 +69,18 @@ int main(int argc, char** argv) {
 		select(FD_SETSIZE, &tmp_set, NULL, NULL, NULL);
 		for (int i = 0; i < FD_SETSIZE; i++) {
 			if (FD_ISSET(i, &tmp_set)) {
-				if (i == sockfd) {
+				if (i == sockfd) { // did i receive from server?
 					char line[5000];
 					recv(sockfd, line, 5000, 0);
 					printf("%s\n", line);
-					if (strcmp(line, "exit\n") == 0) {
+					if (strcmp(line, "exit\n") == 0) { // check for exit
 						printf("Server shutting down.\n");
 						send(sockfd, line, strlen(line) + 1, 0);
 						close(sockfd);
 						FD_CLR(sockfd, &clientfd);
 						exit(0);
 					}
-				} else if (i == STDIN_FILENO) {
+				} else if (i == STDIN_FILENO) { // am i sending a message?
 					char line2[5000];
 					fgets(line2, 5001, stdin);
 					if (strcmp(line2, "exit\n") == 0) {
@@ -84,7 +89,7 @@ int main(int argc, char** argv) {
 						close(sockfd);
 						FD_CLR(sockfd, &clientfd);
 						exit(0);
-					} else {
+					} else { // send that message
 						send(sockfd, line2, strlen(line2) + 1, 0);
 					}
 				}
@@ -94,6 +99,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
+/* Check for valid digits in port number. */
 int check_port(char* port) {
 	int digits = 0;
 	for (int i = 0; i < sizeof(port); i++) {

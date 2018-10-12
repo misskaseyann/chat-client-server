@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <sys/select.h>
 
+/* Server half of client/server chat. */
 int main(int argc, char** argv) {
 	char port[1024];
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	int p;
 
 	// check for error
 	if (sockfd < 0) {
@@ -16,6 +18,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	// Check for valid port.
 	printf("Please give a port number: \n");
 	fgets(port, 1024, stdin);
 	port[strcspn(port, "\n")] = 0;
@@ -24,7 +27,8 @@ int main(int argc, char** argv) {
 		fgets(port, 1024, stdin);
 		port[strcspn(port, "\n")] = 0;
 	}
-	int p = atoi(port);
+
+	p = atoi(port);
 
 	// file descriptor set and set all to zero
 	fd_set sockets;
@@ -46,7 +50,7 @@ int main(int argc, char** argv) {
 	// 10 is the backlog for buffer of connection requests that we havent handled.
 	listen(sockfd, 10);
 	printf("Listening on server\n");
-	fflush(stdout);
+	//fflush(stdout);
 
 	// put the socket in file descriptor.
 	FD_SET(sockfd, &sockets);
@@ -64,10 +68,10 @@ int main(int argc, char** argv) {
 					FD_SET(clientsocket, &sockets);
 					printf("Added client \n");
 				}
-				else if (i == STDIN_FILENO) {
+				else if (i == STDIN_FILENO) { // am i sending a message?
 					char line2[5000];
 					fgets(line2, 5001, stdin);
-					if (strcmp(line2, "exit\n") == 0) {
+					if (strcmp(line2, "exit\n") == 0) { // check for exit
 						printf("Server shutting down.\n");
 						for (int k = 0; k < FD_SETSIZE; k++) {
 							send(k, line2, strlen(line2) + 1, 0);
@@ -75,16 +79,16 @@ int main(int argc, char** argv) {
 						close(sockfd);
 						FD_CLR(sockfd, &sockets);
 						exit(0);
-					} else {
+					} else { // send that message
 						for (int k = 0; k < FD_SETSIZE; k++) {
 							send(k, line2, strlen(line2) + 1, 0);
 						}
 					}
-				} else if (i) {
+				} else if (i) { // receive all messages
 					char line[5000];
 					recv(i, line, 5000, 0);
 					printf("%s\n", line);
-					if (strcmp(line, "exit\n") == 0) {
+					if (strcmp(line, "exit\n") == 0) { // check for exit
 						printf("Server shutting down.\n");
 						for (int k = 0; k < FD_SETSIZE; k++) {
 							send(k, line, strlen(line) + 1, 0);
@@ -100,6 +104,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
+/* Check for valid digits in port number. */
 int check_port(char* port) {
 	int digits = 0;
 	for (int i = 0; i < sizeof(port); i++) {
